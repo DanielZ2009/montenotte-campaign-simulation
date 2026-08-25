@@ -1,0 +1,569 @@
+.main {
+  display: grid;
+  grid-template-rows: minmax(26rem, 68vh) 1fr;
+  min-width: 0;
+}
+
+.map-wrap {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background: #d9e5df;
+}
+
+.map-wrap.repair-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 21rem);
+  gap: .55rem;
+  padding: .55rem;
+}
+
+.map-wrap.repair-open.panel-left {
+  grid-template-columns: minmax(18rem, 21rem) minmax(0, 1fr);
+}
+
+.map-wrap.repair-open .map-scroll {
+  position: relative;
+  inset: auto;
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(23, 33, 43, .18);
+}
+
+.map-wrap.repair-open.panel-left .map-scroll {
+  grid-column: 2;
+}
+
+.map-wrap.repair-open .zoom-controls {
+  right: calc(21rem + 1.25rem);
+  bottom: 1.2rem;
+}
+
+.map-wrap.map-expanded {
+  position: fixed;
+  inset: .75rem;
+  z-index: 30;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(23, 33, 43, .34);
+}
+
+.map-wrap.map-expanded .map-scroll {
+  position: absolute;
+  inset: 0;
+  border: 0;
+}
+
+.map-wrap.map-expanded.repair-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+  padding: .7rem;
+}
+
+.map-wrap.map-expanded.repair-open .map-scroll {
+  position: relative;
+  inset: auto;
+  border: 1px solid rgba(23, 33, 43, .18);
+}
+
+.map-wrap.map-expanded .zoom-controls {
+  right: 1.2rem;
+  bottom: 1.2rem;
+}
+
+.map-wrap.map-expanded.repair-open .zoom-controls {
+  right: calc(22rem + 1.3rem);
+}
+
+.map-expanded-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgba(23, 33, 43, .46);
+}
+
+.map-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.map-scroll.dragging {
+  cursor: grabbing;
+}
+
+.map-canvas {
+  position: relative;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 3370 / 2384;
+  max-height: 100%;
+  box-shadow: inset 0 0 0 1px rgba(23, 33, 43, .18);
+  background: #d9e5df;
+  transform-origin: top center;
+  transition: height .18s ease, width .18s ease;
+}
+
+.zoom-controls {
+  position: absolute;
+  z-index: 5;
+  bottom: .65rem;
+  right: .65rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem;
+  border: 1px solid rgba(23, 33, 43, .22);
+  border-radius: 8px;
+  background: rgba(255, 250, 240, .9);
+  box-shadow: 0 8px 20px rgba(23, 33, 43, .18);
+}
+
+.zoom-controls .icon-button {
+  width: 2.15rem;
+  min-height: 2.15rem;
+  padding: .25rem;
+  background: #fffdf8;
+}
+
+.zoom-level {
+  min-width: 3.2rem;
+  text-align: center;
+  font-weight: 850;
+  font-size: .78rem;
+  color: #4a5660;
+}
+
+.route-repair-toggle {
+  position: absolute;
+  z-index: 7;
+  top: .65rem;
+  left: .65rem;
+  min-height: 2.05rem;
+  padding: .4rem .6rem;
+  font-size: .78rem;
+  box-shadow: 0 8px 20px rgba(23, 33, 43, .16);
+}
+
+.status-phrases {
+  display: grid;
+  gap: .45rem;
+  margin-bottom: .65rem;
+}
+
+.status-phrase {
+  border-left: 3px solid rgba(49, 95, 141, .55);
+  padding: .3rem .55rem;
+  background: rgba(255, 253, 248, .58);
+  color: #334653;
+  line-height: 1.35;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .55rem;
+}
+
+.campaign-badge {
+  border: 1px solid rgba(49, 95, 141, .28);
+  border-radius: 999px;
+  padding: .35rem .55rem;
+  background: #fffdf8;
+  color: #315f8d;
+  font-weight: 850;
+  font-size: .76rem;
+}
+
+.map-wrap.repair-open .route-repair-toggle {
+  left: 1.2rem;
+  top: 1.2rem;
+}
+
+.route-editor {
+  position: absolute;
+  z-index: 6;
+  top: 3.15rem;
+  left: .65rem;
+  display: grid;
+  align-content: start;
+  gap: .45rem;
+  width: min(21rem, calc(100% - 1.3rem));
+  max-height: calc(100% - 3.8rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: .55rem;
+  border: 1px solid rgba(23, 33, 43, .24);
+  border-radius: 8px;
+  background: rgba(255, 250, 240, .94);
+  box-shadow: 0 8px 20px rgba(23, 33, 43, .16);
+}
+
+.route-editor.dock-right {
+  left: auto;
+  right: .65rem;
+}
+
+.map-wrap.repair-open .route-editor,
+.map-wrap.repair-open .route-editor.dock-right {
+  position: relative;
+  inset: auto;
+  z-index: 4;
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  max-height: 100%;
+}
+
+.map-wrap.repair-open.panel-left .route-editor,
+.map-wrap.repair-open.panel-left .route-editor.dock-right {
+  grid-column: 1;
+}
+
+.route-editor.hidden {
+  display: none;
+}
+
+.route-editor-row {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.route-editor input {
+  min-width: 9rem;
+  flex: 1 1 10rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fffdf8;
+  padding: .48rem .55rem;
+  font: inherit;
+  font-size: .82rem;
+}
+
+.route-editor select {
+  flex: 1 1 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fffdf8;
+  padding: .48rem .55rem;
+  font: inherit;
+  font-size: .82rem;
+}
+
+.route-editor-label {
+  font-size: .72rem;
+  font-weight: 850;
+  color: #52606b;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.route-editor textarea {
+  width: 100%;
+  min-height: 3.6rem;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fffdf8;
+  padding: .45rem .5rem;
+  font: 700 .76rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color: #28333d;
+}
+
+.route-editor .text-button {
+  min-height: 2.05rem;
+  padding: .38rem .55rem;
+  font-size: .78rem;
+}
+
+.route-editor-status {
+  color: #52606b;
+  font-size: .76rem;
+  line-height: 1.3;
+}
+
+.report.stale {
+  opacity: .58;
+}
+
+.report.rumour text {
+  font-style: italic;
+}
+
+.unit-fatigue {
+  fill: #6c4d1d;
+  font-size: calc(1.45px * var(--overlay-scale, 1));
+  font-weight: 850;
+  paint-order: stroke;
+  stroke: rgba(255, 250, 240, .9);
+  stroke-width: .45;
+}
+
+.historical-debrief-grid {
+  display: grid;
+  gap: .55rem;
+}
+
+.debrief-row {
+  display: grid;
+  grid-template-columns: 8rem 1fr 1fr;
+  gap: .55rem;
+  padding: .45rem 0;
+  border-top: 1px solid rgba(216, 201, 170, .7);
+  font-size: .88rem;
+}
+
+.debrief-row strong {
+  color: #2b3c49;
+}
+
+.base-map,
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.historical-label {
+  font-family: "Iowan Old Style", "Baskerville", "Libre Baskerville", Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.map-label,
+.terrain-label,
+.unit .unit-name,
+.unit .unit-strength,
+.route-edit-index,
+.enemy-name {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleX(.82);
+}
+
+.base-map {
+  object-fit: fill;
+  user-select: none;
+}
+
+.map-overlay {
+  pointer-events: auto;
+}
+
+.map-label {
+  font-size: calc(2.2px * var(--overlay-scale, 1));
+  font-weight: 800;
+  fill: #22313b;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,.86);
+  stroke-width: calc(.72px * var(--overlay-scale, 1));
+}
+
+.place-dot {
+  fill: #17212b;
+  stroke: white;
+  stroke-width: .45;
+}
+
+.army,
+.unit {
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.22));
+  transition: transform .35s ease;
+}
+
+.unit image {
+  outline: .2px solid rgba(255,255,255,.75);
+}
+
+.unit .unit-name,
+.unit .unit-strength,
+.enemy-name {
+  font-size: calc(2px * var(--overlay-scale, 1));
+  font-weight: 900;
+  fill: #17212b;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,.9);
+  stroke-width: calc(.55px * var(--overlay-scale, 1));
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+
+.unit .unit-strength {
+  font-size: calc(1.55px * var(--overlay-scale, 1));
+  fill: #3a4650;
+}
+
+.route {
+  fill: none;
+  stroke-width: .75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .78;
+}
+
+.road-route {
+  stroke: rgba(45, 52, 58, .52);
+  stroke-width: .36;
+  opacity: .45;
+}
+
+.campaign-arrow {
+  stroke-width: 1.05;
+  opacity: .88;
+  transition: opacity .25s ease;
+}
+
+.campaign-arrow.inactive {
+  opacity: .18;
+}
+
+.movement-trace {
+  fill: none;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .95;
+}
+
+.route-edit-line {
+  fill: none;
+  stroke: #a56b1f;
+  stroke-width: .9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1.4 .8;
+  opacity: .95;
+}
+
+.route-edit-point {
+  fill: #fff7e6;
+  stroke: #a56b1f;
+  stroke-width: .36;
+}
+
+.route-edit-index {
+  font-size: calc(1.45px * var(--overlay-scale, 1));
+  font-weight: 900;
+  fill: #6d4314;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgba(255,250,240,.9);
+  stroke-width: calc(.32px * var(--overlay-scale, 1));
+}
+
+.location-edit-hit {
+  fill: transparent;
+  stroke: transparent;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.location-edit-marker {
+  fill: rgba(165, 107, 31, .2);
+  stroke: #a56b1f;
+  stroke-width: .42;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.location-edit-cross {
+  stroke: #a56b1f;
+  stroke-width: .42;
+  stroke-linecap: round;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.location-edit-dragging .location-edit-hit,
+.location-edit-dragging .location-edit-marker,
+.location-edit-dragging .location-edit-cross {
+  cursor: grabbing;
+}
+
+.terrain-label {
+  font-size: calc(2px * var(--overlay-scale, 1));
+  font-weight: 900;
+  fill: #5a3b18;
+  paint-order: stroke;
+  stroke: rgba(255,250,240,.9);
+  stroke-width: calc(.55px * var(--overlay-scale, 1));
+  cursor: help;
+  pointer-events: auto;
+}
+
+.topographic-label {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-style: italic;
+  font-weight: 850;
+  fill: #315d48;
+  stroke: rgba(244, 255, 238, .92);
+}
+
+.terrain-label:hover,
+.terrain-label:focus {
+  fill: #8a2d20;
+  outline: none;
+}
+
+.report {
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.22));
+}
+
+.report path {
+  fill: #fff7e6;
+  stroke: #9e3f32;
+  stroke-width: .36;
+}
+
+.report text {
+  font-size: calc(1.08px * var(--overlay-scale, 1));
+  font-weight: 950;
+  fill: #9e3f32;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgba(255,250,240,.86);
+  stroke-width: calc(.32px * var(--overlay-scale, 1));
+}
+
+.report-edit-hit {
+  fill: transparent;
+  stroke: transparent;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.report .report-edit-outline {
+  fill: rgba(255, 247, 230, .16);
+  stroke: #315f8d;
+  stroke-width: .42;
+  cursor: grab;
+}
+
+.report-edit-dragging .report-edit-hit,
+.report-edit-dragging .report-edit-outline {
+  cursor: grabbing;
+}
+
+.wedge {
+  fill: rgba(49, 95, 141, .2);
+  stroke: rgba(49, 95, 141, .35);
+  stroke-width: .45;
+  transition: opacity .3s ease;
+}
