@@ -38,7 +38,7 @@
     .app {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: minmax(18rem, 28rem) minmax(28rem, 1fr);
+      grid-template-columns: minmax(18rem, 25rem) minmax(32rem, 1fr);
     }
 
     .left {
@@ -186,6 +186,32 @@
       line-height: 1.35;
     }
 
+    .order-sheet {
+      display: grid;
+      gap: .4rem;
+      border-top: 1px solid rgba(216, 201, 170, .7);
+      margin-top: .1rem;
+      padding-top: .45rem;
+    }
+
+    .order-sheet dl {
+      display: grid;
+      grid-template-columns: 5.6rem 1fr;
+      gap: .22rem .55rem;
+      margin: 0;
+      font-size: .8rem;
+    }
+
+    .order-sheet dt {
+      color: #66747f;
+      font-weight: 850;
+    }
+
+    .order-sheet dd {
+      margin: 0;
+      color: #283946;
+    }
+
     .footer-actions {
       display: flex;
       gap: .55rem;
@@ -194,6 +220,13 @@
 
     .debug-toggle {
       margin-left: auto;
+      font-size: .78rem;
+      background: #fffdf8;
+    }
+
+    .time-button {
+      min-height: 2.2rem;
+      padding: .45rem .6rem;
       font-size: .78rem;
       background: #fffdf8;
     }
@@ -224,7 +257,7 @@
 
     .main {
       display: grid;
-      grid-template-rows: minmax(22rem, 54vh) 1fr;
+      grid-template-rows: minmax(26rem, 68vh) 1fr;
       min-width: 0;
     }
 
@@ -517,6 +550,41 @@
       color: #52606b;
       font-size: .76rem;
       line-height: 1.3;
+    }
+
+    .report.stale {
+      opacity: .58;
+    }
+
+    .report.rumour text {
+      font-style: italic;
+    }
+
+    .unit-fatigue {
+      fill: #6c4d1d;
+      font-size: calc(1.45px * var(--overlay-scale, 1));
+      font-weight: 850;
+      paint-order: stroke;
+      stroke: rgba(255, 250, 240, .9);
+      stroke-width: .45;
+    }
+
+    .historical-debrief-grid {
+      display: grid;
+      gap: .55rem;
+    }
+
+    .debrief-row {
+      display: grid;
+      grid-template-columns: 8rem 1fr 1fr;
+      gap: .55rem;
+      padding: .45rem 0;
+      border-top: 1px solid rgba(216, 201, 170, .7);
+      font-size: .88rem;
+    }
+
+    .debrief-row strong {
+      color: #2b3c49;
     }
 
     .base-map,
@@ -1087,6 +1155,10 @@
       <div class="footer-actions">
         <button class="icon-button" id="backBtn" title="Back one decision" aria-label="Back one decision">↶</button>
         <button class="icon-button" id="resetBtn" title="Restart campaign" aria-label="Restart campaign">↺</button>
+        <button class="text-button time-button" id="advanceOneBtn">Advance 1h</button>
+        <button class="text-button time-button" id="advanceThreeBtn">Advance 3h</button>
+        <button class="text-button time-button" id="advanceDawnBtn">Until Dawn</button>
+        <button class="text-button time-button" id="advanceReportBtn">Next Report</button>
         <button class="text-button primary hidden" id="debriefBtn">Debrief</button>
         <button class="text-button debug-toggle" id="debugToggleBtn" aria-pressed="false">Instructor View</button>
       </div>
@@ -2379,7 +2451,8 @@
     let movementPlans = {};
     let lastNarrativeEvent = null;
     const savedMapKey = "montenottePrototypeMapRepairsV1";
-    const routeRepairEnabled = new URLSearchParams(window.location.search).get("repair") === "1";
+    const urlParams = new URLSearchParams(window.location.search);
+    const routeRepairEnabled = urlParams.get("dev") === "1" || urlParams.get("repair") === "1";
 
     const els = {
       dateChip: document.getElementById("dateChip"),
@@ -2392,6 +2465,10 @@
       reset: document.getElementById("resetBtn"),
       debrief: document.getElementById("debriefBtn"),
       debugToggle: document.getElementById("debugToggleBtn"),
+      advanceOne: document.getElementById("advanceOneBtn"),
+      advanceThree: document.getElementById("advanceThreeBtn"),
+      advanceDawn: document.getElementById("advanceDawnBtn"),
+      advanceReport: document.getElementById("advanceReportBtn"),
       places: document.getElementById("placeLayer"),
       routes: document.getElementById("routeLayer"),
       routeEdit: document.getElementById("routeEditLayer"),
@@ -2496,11 +2573,12 @@
     function campaignDateText(offset = state.daysElapsed) {
       const day = 10 + Math.floor(offset);
       const frac = offset - Math.floor(offset);
-      const suffix = frac >= .875 ? "night" : frac >= .66 ? "evening" : frac >= .25 ? "afternoon" : "morning";
-      return `${day} Apr ${suffix}`;
+      const hour = Math.round((6 + frac * 24) % 24);
+      return `${day} Apr ${String(hour).padStart(2, "0")}:00`;
     }
 
     function timeCostText(days) {
+      if (days < .5) return `${Math.round(days * 24)} hours`;
       if (days === .5) return "half-day";
       if (days === 1) return "one day";
       return `${days} days`;
@@ -2701,6 +2779,35 @@
 
     function reportSymbol(report) {
       return report.symbol || (report.side === "Austrian" ? "Austrian?" : report.side === "Sardinian" ? "Sardinian?" : "Enemy?");
+    }
+
+    function reportBaseAgeDays(report) {
+      if (report.updated === "today") return 0;
+      if (report.updated === "yesterday") return 1;
+      if (report.updated === "two days ago") return 2;
+      return report.stale ? 1 : 0;
+    }
+
+    function reportAgeDays(report) {
+      return reportBaseAgeDays(report) + state.daysElapsed;
+    }
+
+    function reportFreshness(report) {
+      const age = reportAgeDays(report);
+      if (age >= 2) return { label: "possibly obsolete", stale: true };
+      if (age >= 1) return { label: "last reported position", stale: true };
+      if (age >= .5) return { label: "aging report", stale: report.stale };
+      return { label: "fresh report", stale: !!report.stale };
+    }
+
+    function reportProvenance(report) {
+      const source = report.source || "unattributed report";
+      if (source === "scout") return "Scout report";
+      if (source === "local guide") return "Civilian/local guide report";
+      if (source === "officer") return "Commander report";
+      if (source === "captured dispatch") return "Captured dispatch";
+      if (source === "distant firing") return "Distant firing";
+      return source;
     }
 
     function allUnitObjects() {
@@ -3497,6 +3604,8 @@
         units[unit.id] = {
           ...unit,
           strength: unit.strength,
+          startingStrength: unit.strength,
+          fatigue: unit.fatigue || 0,
           location: { ...unit.location },
           visible: unit.visible
         };
@@ -3525,6 +3634,50 @@
       return state.intelligenceAccuracy >= 55
         ? `about ${formatNumber(rough)} men`
         : `${formatNumber(low)}-${formatNumber(high)} men?`;
+    }
+
+    function fatigueLabel(unit) {
+      const fatigue = unit.fatigue || 0;
+      if (fatigue >= 76) return "EXHAUSTED";
+      if (fatigue >= 52) return "WEARY";
+      if (fatigue >= 26) return "TIRED";
+      return "FRESH";
+    }
+
+    function fatigueSentence(unit) {
+      const label = fatigueLabel(unit);
+      if (label === "EXHAUSTED") return "exhausted; officers report straggling and slow response";
+      if (label === "WEARY") return "weary; able to fight, but marches are biting";
+      if (label === "TIRED") return "tired; still reliable if not overdriven";
+      return "fresh enough for immediate orders";
+    }
+
+    function choicePosture(choice) {
+      const label = choice.label.toLowerCase();
+      if (choice.scout || label.includes("reconnoitre")) return "Reconnaissance";
+      if (label.includes("rapid") || label.includes("rush") || label.includes("night") || label.includes("late strike")) return "Rapid march";
+      if (label.includes("defend") || label.includes("hold") || label.includes("wait")) return "Defensive posture";
+      if (label.includes("retreat") || label.includes("fall back")) return "Retreat";
+      return "Operational march";
+    }
+
+    function applyFatigueForChoice(choice, days) {
+      const movedIds = new Set((choice.unitMoves || []).map(move => move.id));
+      const posture = choicePosture(choice);
+      movedIds.forEach(id => {
+        const unit = unitState[id];
+        if (!unit || unit.side !== "french") return;
+        const routeLoad = Math.max(1, (choice.routes || []).length);
+        const base = posture === "Rapid march" ? 22 : posture === "Reconnaissance" ? 10 : posture === "Retreat" ? 16 : 14;
+        unit.fatigue = clamp((unit.fatigue || 0) + base * Math.max(.5, days) + routeLoad * 2);
+      });
+      Object.values(unitState).forEach(unit => {
+        if (unit.side === "french" && !movedIds.has(unit.id)) unit.fatigue = Math.max(0, (unit.fatigue || 0) - 6 * Math.max(.5, days));
+      });
+      const exhausted = Object.values(unitState).filter(unit => unit.side === "french" && (unit.fatigue || 0) >= 76).length;
+      const weary = Object.values(unitState).filter(unit => unit.side === "french" && (unit.fatigue || 0) >= 52).length;
+      if (exhausted) addState({ morale: -4 * exhausted, frenchConcentration: -3 * exhausted });
+      else if (weary) addState({ morale: -2, frenchConcentration: -1 });
     }
 
     function applyUnitMove(move) {
@@ -3562,17 +3715,20 @@
       Object.values(unitState).forEach(unit => {
         if (!unit.visible || unit.strength <= 0) return;
         const loc = point(unit.location);
-        const group = svgEl("g", { id: `unit-${unit.id}`, class: "unit", transform: `translate(${loc.x} ${loc.y})`, "aria-label": `${sideClass(unit)} ${unit.name}, ${visibleStrength(unit)}` });
+        const group = svgEl("g", { id: `unit-${unit.id}`, class: "unit", transform: `translate(${loc.x} ${loc.y})`, "aria-label": `${sideClass(unit)} ${unit.name}, ${visibleStrength(unit)}, ${fatigueLabel(unit)}` });
         const title = svgEl("title");
-        title.textContent = `${sideClass(unit)} ${unit.name} (${unit.role}) - ${visibleStrength(unit)}`;
+        title.textContent = `${sideClass(unit)} ${unit.name} (${unit.role}) - ${visibleStrength(unit)} - ${fatigueLabel(unit)}`;
         group.appendChild(title);
         group.appendChild(svgEl("image", { href: unit.flag, x: "-2.175", y: "-3.2", width: "4.35", height: "2.75" }));
         const name = svgEl("text", { class: "unit-name", y: ".25" });
         name.textContent = unit.name;
         const strength = svgEl("text", { class: "unit-strength historical-label", y: "2.15" });
         strength.textContent = visibleStrength(unit);
+        const fatigue = svgEl("text", { class: "unit-fatigue historical-label", y: "3.75" });
+        fatigue.textContent = unit.side === "french" ? fatigueLabel(unit) : "reported";
         group.appendChild(name);
         group.appendChild(strength);
+        group.appendChild(fatigue);
         els.units.appendChild(group);
       });
       applyOverlayScale();
@@ -3635,7 +3791,7 @@
         <div>
           <strong>${unit.name}</strong>
           <span>${sideClass(unit)} ${unit.role}</span>
-          <span>${unit.side === "french" ? "ready for orders" : "strength uncertain"}</span>
+          <span>${unit.side === "french" ? fatigueSentence(unit) : "strength and intent uncertain"}</span>
         </div>
       `).join("");
       return `
@@ -3785,14 +3941,15 @@
       els.reports.innerHTML = "";
       reportSet.forEach(report => {
         const loc = reportPoint(report);
-        const group = svgEl("g", { class: "report", "aria-label": `${report.label} ${report.location}` });
+        const freshness = reportFreshness(report);
+        const group = svgEl("g", { class: `report${freshness.stale ? " stale" : ""}${report.label.includes("rumour") ? " rumour" : ""}`, "aria-label": `${report.label} ${report.location}` });
         const marker = svgEl("path", { "data-cx": loc.x, "data-cy": loc.y });
         const title = svgEl("title");
-        title.textContent = `${report.label}: ${report.side}, ${report.estimate || "unknown strength"}, ${report.reliability} reliability`;
+        title.textContent = `${reportProvenance(report)}: ${report.side}, ${report.estimate || "unknown strength"}, ${report.reliability} reliability, ${freshness.label}`;
         marker.appendChild(title);
         group.appendChild(marker);
         const letter = svgEl("text", { x: loc.x, y: loc.y });
-        letter.textContent = reportSymbol(report);
+        letter.textContent = freshness.stale && !report.symbol ? "?" : reportSymbol(report);
         group.appendChild(letter);
         els.reports.appendChild(group);
       });
@@ -3800,12 +3957,13 @@
     }
 
     function reportHtml(report) {
-      const stale = report.stale ? " This may be wrong or outdated." : "";
-      const source = report.source ? ` Source: ${report.source}.` : "";
+      const freshness = reportFreshness(report);
+      const stale = freshness.stale ? " This may be wrong, old, or already overtaken by enemy movement." : "";
+      const source = ` Source: ${reportProvenance(report)}.`;
       return `
         <div class="report-card">
-          <strong>${report.label}: ${report.location}</strong>
-          <span>${report.side} report. Estimated strength: ${report.estimate || "unknown"}. Reliability: ${report.reliability}. Last updated: ${report.updated}.${source}</span>
+          <strong>${freshness.label}: ${report.location}</strong>
+          <span>${report.side} report. Estimated strength: ${report.estimate || "unknown"}. Reliability: ${report.reliability}. Last updated: ${report.updated}; now ${campaignDateText()}.${source}</span>
           <span>${report.note}${stale}</span>
         </div>
       `;
@@ -3910,6 +4068,8 @@
       officerComments().forEach(line => lines.push(line));
       if (state.supply < 25) lines.push(["Quartermaster's note", "Bread and shoes are becoming a campaign question. Several battalions are still moving, but not without complaint."]);
       else if (state.supply > 55) lines.push(["Quartermaster's note", "The magazines near the coast are giving the army a little breathing room. Officers warn that this security will not follow every mountain road."]);
+      const tiredFrench = Object.values(unitState).filter(unit => unit.side === "french" && (unit.fatigue || 0) >= 52);
+      if (tiredFrench.length) lines.push(["Report on marching condition", `${tiredFrench.map(unit => unit.name).slice(0, 3).join(", ")} ${tiredFrench.length === 1 ? "is" : "are"} showing serious fatigue. Rapid orders may still work, but the army will pay for them.`]);
       if (state.morale < 30) lines.push(["Report from the columns", "Several officers report exhaustion and straggling. The men still obey, but the marches are biting deeply."]);
       else if (state.morale > 58) lines.push(["Report from the columns", "The soldiers are beginning to believe the enemy can be beaten in detail. Confidence is spreading faster than the rations."]);
       if (state.alliedConcentration > 65) lines.push(["Prisoner statement", "Captured men speak of couriers moving between Austrian and Sardinian headquarters. The coalition may be trying to restore contact."]);
@@ -3961,6 +4121,15 @@
     function forcesFromChoice(choice) {
       const ids = [...new Set([...(choice.unitMoves || []).map(move => move.id), ...(choice.reveal || [])])];
       return ids.map(id => unitState[id]?.name || id).filter(Boolean).join(", ") || "advance guards and reported enemy detachments";
+    }
+
+    function frenchForcesFromChoice(choice) {
+      const ids = [...new Set((choice.unitMoves || []).map(move => move.id))];
+      const names = ids
+        .map(id => unitState[id])
+        .filter(unit => unit?.side === "french")
+        .map(unit => unit.name);
+      return names.join(", ") || "available French columns";
     }
 
     function lossesFromCasualties(casualties = []) {
@@ -4222,13 +4391,59 @@
 
     function campaignReports() {
       const reports = [
-        { side: "Austrian", label: state.austrianThreat > 55 ? "reported Austrian pressure" : "Austrian force falling back", location: state.austrianThreat > 55 ? "Dego" : "Acqui", estimate: state.intelligenceAccuracy > 52 ? "several thousand" : "uncertain strength", reliability: state.intelligenceAccuracy > 50 ? "medium" : "low", updated: "today", note: state.austrianThreat > 55 ? "Austrian forces may restore contact if not checked." : "Austrian movement appears east or northeast of Dego.", stale: state.intelligenceAccuracy < 35 },
-        { side: "Sardinian", label: state.sardinianPressure > 50 ? "Sardinian line under pressure" : "reported Sardinian force", location: state.sardinianPressure > 50 ? "Mondovi" : "Ceva", estimate: state.intelligenceAccuracy > 55 ? "large but stretched" : "uncertain", reliability: state.intelligenceAccuracy > 45 ? "medium" : "low", updated: state.intelligenceAccuracy > 40 ? "today" : "yesterday", note: state.sardinianPressure > 50 ? "Political pressure on Turin is rising." : "Colli may still be able to coordinate with Austria.", stale: state.intelligenceAccuracy < 38 }
+        { side: "Austrian", label: state.austrianThreat > 55 ? "reported Austrian pressure" : "Austrian force falling back", location: state.austrianThreat > 55 ? "Dego" : "Acqui", estimate: state.intelligenceAccuracy > 52 ? "several thousand" : "uncertain strength", reliability: state.intelligenceAccuracy > 50 ? "medium" : "low", updated: "today", source: state.intelligenceAccuracy > 55 ? "scout" : "distant firing", note: state.austrianThreat > 55 ? "Austrian forces may restore contact if not checked." : "Austrian movement appears east or northeast of Dego.", stale: state.intelligenceAccuracy < 35 },
+        { side: "Sardinian", label: state.sardinianPressure > 50 ? "Sardinian line under pressure" : "reported Sardinian force", location: state.sardinianPressure > 50 ? "Mondovi" : "Ceva", estimate: state.intelligenceAccuracy > 55 ? "large but stretched" : "uncertain", reliability: state.intelligenceAccuracy > 45 ? "medium" : "low", updated: state.intelligenceAccuracy > 40 ? "today" : "yesterday", source: state.intelligenceAccuracy > 50 ? "captured dispatch" : "local guide", note: state.sardinianPressure > 50 ? "Political pressure on Turin is rising." : "Colli may still be able to coordinate with Austria.", stale: state.intelligenceAccuracy < 38 }
       ];
       if (state.alliedConcentration >= 62) {
-        reports.push({ side: "Austrian", label: "coalition contact danger", location: "Carcare", estimate: "two allied forces nearing contact", reliability: "medium", updated: "today", note: "If French divisions are dispersed, a counterstroke is possible.", stale: false, symbol: "Contact?" });
+        reports.push({ side: "Austrian", label: "coalition contact danger", location: "Carcare", estimate: "two allied forces nearing contact", reliability: "medium", updated: "today", source: "captured dispatch", note: "If French divisions are dispersed, a counterstroke is possible.", stale: false, symbol: "Contact?" });
       }
       return reports;
+    }
+
+    const enemyCommandDoctrine = {
+      beaulieu: "Beaulieu seeks to protect Austrian communications and reacts strongly to French attention around Voltri, Genoa, or Dego.",
+      colli: "Colli protects Piedmont first. He cooperates with Austria, but retreats if the road to Turin appears endangered.",
+      argenteau: "Argenteau attacks if the French center looks weak and withdraws if isolation threatens."
+    };
+
+    function enemyPlanFromState() {
+      if (state.frenchConcentration <= 32 && state.alliedConcentration >= 52) {
+        return {
+          title: "Argenteau tests the French center",
+          side: "austrian",
+          location: "Montenotte",
+          route: ["acquiToDego", "montenotteToDego"],
+          reveal: ["argenteau"],
+          moves: [{ id: "argenteau", to: { place: "Montenotte", dx: 1.4, dy: -1.1 } }],
+          text: "Argenteau appears to have interpreted the French dispersal as an opening. Reports place Austrian troops probing toward Montenotte and Carcare.",
+          responseHint: enemyCommandDoctrine.argenteau
+        };
+      }
+      if (state.sardinianPressure >= 58 && state.austrianThreat > 44) {
+        return {
+          title: "Colli begins protecting the Turin road",
+          side: "piedmont",
+          location: "Ceva",
+          route: ["millesimoToCeva", "cevaToMondovi"],
+          reveal: ["colli"],
+          moves: [{ id: "colli", to: { place: "Mondovi", dx: 1.6, dy: -1.4 } }],
+          text: "Sardinian reports suggest Colli is less interested in a dramatic counterattack than preserving the road toward Turin.",
+          responseHint: enemyCommandDoctrine.colli
+        };
+      }
+      if (state.austrianThreat >= 62) {
+        return {
+          title: "Beaulieu tries to restore Austrian contact",
+          side: "austrian",
+          location: "Dego",
+          route: ["ovadaToDego", "acquiToDego"],
+          reveal: ["beaulieu", "vukassovich"],
+          moves: [{ id: "vukassovich", to: { place: "Dego", dx: 2.4, dy: .8 } }],
+          text: "Austrian movement is reported from the northeast. Beaulieu appears to be trying to rejoin the operational front rather than merely threaten the coast.",
+          responseHint: enemyCommandDoctrine.beaulieu
+        };
+      }
+      return null;
     }
 
     function generatedChoices() {
@@ -4356,11 +4571,14 @@
 
     function makeCampaignTurn() {
       const highDanger = state.alliedConcentration >= 62;
+      const enemyPlan = enemyPlanFromState();
       return {
         date: campaignDateText(),
-        title: highDanger ? "Allied Concentration Danger" : "Campaign Continues",
+        title: highDanger ? "Allied Concentration Danger" : enemyPlan ? "Enemy Intentions Shift" : "Campaign Continues",
         brief: highDanger
           ? "Reports suggest Austrian and Sardinian forces may be restoring contact. French concentration, supply, and morale now decide whether the army can keep operating inland."
+          : enemyPlan
+            ? "Enemy commanders are reacting to your orders. The reports are imperfect, but they no longer describe a passive coalition."
           : "The campaign has not yet reached a decision. Each day lets the French exploit roads and passes, but it also lets the Allies react.",
         enemyEvent: highDanger ? {
           title: "Coalition columns seek contact",
@@ -4375,7 +4593,7 @@
           ],
           text: "Allied movement is no longer just rumour. Austrian and Sardinian forces are trying to make the French central position untenable.",
           responseHint: "If French concentration, morale, or supply is weak, this can become a campaign-ending counterstroke."
-        } : null,
+        } : enemyPlan,
         reports: campaignReports(),
         choices: generatedChoices()
       };
@@ -4425,6 +4643,44 @@
       renderMeters();
     }
 
+    function choiceDestination(choice) {
+      const firstMove = (choice.unitMoves || []).find(move => unitState[move.id]?.side === "french") || choice.unitMoves?.[0];
+      if (firstMove?.to?.place) return locations[firstMove.to.place]?.label || firstMove.to.place;
+      if (choice.map?.reports?.length) return choice.map.reports.join(" / ");
+      return "central roads";
+    }
+
+    function choiceAuthority(choice) {
+      const label = choice.label.toLowerCase();
+      if (label.includes("defend") || label.includes("hold")) return "Hold unless enemy presses hard";
+      if (label.includes("reconnoitre")) return "Observe; avoid general action";
+      if (label.includes("retreat") || label.includes("fall back")) return "Withdraw in order";
+      if (label.includes("counterstroke") || label.includes("attack") || label.includes("strike")) return "Attack if local advantage appears";
+      return "Engage only if road objective requires it";
+    }
+
+    function orderDelayText(choice) {
+      const moved = (choice.unitMoves || []).filter(move => unitState[move.id]?.side === "french").length;
+      const routeLoad = Math.max(1, (choice.routes || []).length);
+      const hours = Math.max(1, Math.round(moved * .75 + routeLoad * .5));
+      return `${hours}h courier and staff friction`;
+    }
+
+    function orderSheetHtml(choice) {
+      return `
+        <div class="order-sheet" aria-label="Order sheet">
+          <dl>
+            <dt>To</dt><dd>${frenchForcesFromChoice(choice)}</dd>
+            <dt>Route</dt><dd>${(choice.routes || []).join(" -> ") || "road not specified"}</dd>
+            <dt>Destination</dt><dd>${choiceDestination(choice)}</dd>
+            <dt>Posture</dt><dd>${choicePosture(choice)}</dd>
+            <dt>Authority</dt><dd>${choiceAuthority(choice)}</dd>
+            <dt>Delay</dt><dd>${orderDelayText(choice)}</dd>
+          </dl>
+        </div>
+      `;
+    }
+
     function renderTurn() {
       if (turnIndex >= activeTurns.length) activeTurns = [makeCampaignTurn()];
 
@@ -4461,10 +4717,49 @@
       turn.choices.forEach(choice => {
         const button = document.createElement("button");
         button.className = "choice";
-        button.innerHTML = `<strong>${choice.label}</strong><span>${choice.rationale}</span><small>Time required: ${timeCostText(choiceTimeCost(choice))}. Consequences will be reported by dispatch.</small>`;
+        button.innerHTML = `<strong>${choice.label}</strong><span>${choice.rationale}</span>${orderSheetHtml(choice)}<small>Estimated execution time: ${timeCostText(choiceTimeCost(choice))}. Dispatch reports will describe the consequences.</small>`;
         button.addEventListener("click", () => chooseOperational(choice));
         els.choices.appendChild(button);
       });
+    }
+
+    function advanceCampaignTime(hours, mode = "time") {
+      if (phase === "intro" || phase === "final") return;
+      const days = hours / 24;
+      const before = { ...state };
+      addState({
+        daysElapsed: days,
+        alliedConcentration: Math.max(1, Math.round(hours / 3)),
+        austrianThreat: hours >= 6 ? 2 : 1,
+        intelligenceAccuracy: mode === "report" ? 3 : -Math.max(1, Math.round(hours / 6)),
+        politicalPressure: hours >= 6 ? 2 : 0
+      });
+      Object.values(unitState).forEach(unit => {
+        if (unit.side === "french") unit.fatigue = Math.max(0, (unit.fatigue || 0) - Math.round(hours / 3));
+      });
+      lastNarrativeEvent = mode === "report"
+        ? { title: "Report Arrives", body: "Headquarters waits until another courier arrives. The new report clarifies one question while making yesterday's map less trustworthy." }
+        : { title: "Time Passes", body: `${hours} hours pass at headquarters. Couriers move, enemy commanders react, and older reports become less certain.` };
+      lastChoiceLesson = "No new operational order was issued. Waiting can rest tired columns, but it also gives the coalition time to interpret French intentions.";
+      history.push({
+        type: "time",
+        title: campaignDateText(before.daysElapsed),
+        label: mode === "report" ? "Advance until next report" : `Advance ${hours}h`,
+        result: lastChoiceLesson,
+        before
+      });
+      activeTurns = [makeCampaignTurn()];
+      turnIndex = 0;
+      phase = "decision";
+      renderJournal();
+      renderTurn();
+    }
+
+    function advanceUntilDawn() {
+      const frac = state.daysElapsed - Math.floor(state.daysElapsed);
+      const currentHour = (6 + frac * 24) % 24;
+      const hours = currentHour < 6 ? 6 - currentHour : 30 - currentHour;
+      advanceCampaignTime(Math.max(1, Math.round(hours)), "dawn");
     }
 
     function effectSummary(delta) {
@@ -4521,6 +4816,7 @@
         state.morale = clamp(state.morale - 2);
       }
       const alliedReaction = applyAlliedReaction(choice, days);
+      applyFatigueForChoice(choice, days);
       lastNarrativeEvent = chooseNarrativeEvent(choice);
       applyMovementPlansToChoice(choice);
 
@@ -4607,7 +4903,60 @@
       `;
     }
 
+    function lossTotals() {
+      return Object.values(unitState).reduce((totals, unit) => {
+        const lost = Math.max(0, (unit.startingStrength || unit.strength) - unit.strength);
+        if (unit.side === "french") totals.french += lost;
+        else totals.allied += lost;
+        return totals;
+      }, { french: 0, allied: 0 });
+    }
+
+    function armyConditionText() {
+      const french = Object.values(unitState).filter(unit => unit.side === "french");
+      const averageFatigue = french.reduce((sum, unit) => sum + (unit.fatigue || 0), 0) / Math.max(1, french.length);
+      if (averageFatigue >= 65 || state.morale <= 22) return "dangerously worn";
+      if (averageFatigue >= 42 || state.supply <= 28) return "strained";
+      if (averageFatigue <= 24 && state.morale >= 45) return "good";
+      return "usable but tired";
+    }
+
+    function campaignScore(result) {
+      const losses = lossTotals();
+      let score = result?.type === "victory" ? 62 : result?.type === "defeat" ? 22 : 42;
+      if (state.coalitionCohesion <= 30) score += 12;
+      if (state.sardinianPressure >= 68) score += 10;
+      if (state.austrianThreat <= 34) score += 8;
+      if (state.daysElapsed <= 4) score += 8;
+      if (losses.french <= 3000) score += 8;
+      if (armyConditionText() === "good") score += 6;
+      if (state.alliedConcentration >= 70) score -= 12;
+      if (losses.french >= 7000) score -= 10;
+      if (state.supply <= 20 || state.morale <= 20) score -= 10;
+      return Math.max(0, Math.min(100, Math.round(score)));
+    }
+
+    function historicalDebriefHtml(result) {
+      const losses = lossTotals();
+      const score = campaignScore(result);
+      const rating = score >= 85 ? "Decisive Victory" : score >= 68 ? "Strong Campaign" : score >= 50 ? "Limited Success" : score >= 32 ? "Pyrrhic Or Stalled Result" : "Campaign Failure";
+      return `
+        <div class="terrain-note">
+          <strong>Historical Debrief</strong>
+          <div class="historical-debrief-grid">
+            <div class="debrief-row"><strong>Political result</strong><span>Historical: Sardinia moved toward peace by late April.</span><span>Your run: ${result?.type === "victory" ? "Sardinia is operationally separated from Austria." : "The coalition remains dangerous or the French army has failed."}</span></div>
+            <div class="debrief-row"><strong>Time</strong><span>Historical: roughly 18 days to force the armistice logic.</span><span>Your run: ${state.daysElapsed.toFixed(1).replace(".0", "")} campaign days elapsed.</span></div>
+            <div class="debrief-row"><strong>French losses</strong><span>Historical comparison point: about 6,000 campaign losses.</span><span>Your run: about ${formatNumber(losses.french)} recorded losses.</span></div>
+            <div class="debrief-row"><strong>Allied losses</strong><span>Historical comparison point: heavy Allied losses and prisoners across the campaign.</span><span>Your run: about ${formatNumber(losses.allied)} recorded losses.</span></div>
+            <div class="debrief-row"><strong>Army condition</strong><span>Historical problem: speed worked only because the army kept moving.</span><span>Your army is ${armyConditionText()}.</span></div>
+          </div>
+          <span><b>Rating:</b> ${score} — ${rating}</span>
+        </div>
+      `;
+    }
+
     function renderFinal(result = finalOutcome || campaignOutcome()) {
+      phase = "final";
       result = result || {
         title: "Campaign Unresolved",
         military: "The campaign remains undecided. The French army is still operating, but no coalition-level decision has occurred.",
@@ -4625,6 +4974,7 @@
         <div class="terrain-note"><strong>Geography lesson</strong><span>${result.lesson}</span></div>
         <div class="terrain-note"><strong>Historical comparison</strong><span>${result.comparison}</span></div>
         <div class="terrain-note"><strong>What your run shows</strong><span>${result.diagnosis}</span></div>
+        ${historicalDebriefHtml(result)}
         <div class="terrain-note"><strong>Campaign badges</strong><div class="badge-row">${campaignBadges(result).map(([name, note]) => `<span class="campaign-badge" title="${note}">${name}</span>`).join("")}</div></div>
       `;
       renderMeters();
@@ -4645,6 +4995,7 @@
       lastChoiceLesson = "";
       lastCasualtyReport = "";
       lastBattleReport = null;
+      lastNarrativeEvent = null;
       finalOutcome = null;
       briefingIndex = 0;
       mapReviewed = false;
@@ -4659,6 +5010,10 @@
 
     els.back.addEventListener("click", back);
     els.reset.addEventListener("click", reset);
+    els.advanceOne.addEventListener("click", () => advanceCampaignTime(1));
+    els.advanceThree.addEventListener("click", () => advanceCampaignTime(3));
+    els.advanceDawn.addEventListener("click", advanceUntilDawn);
+    els.advanceReport.addEventListener("click", () => advanceCampaignTime(2, "report"));
     els.briefingSkip.addEventListener("click", skipBriefing);
     els.briefingNext.addEventListener("click", advanceBriefing);
     els.briefingInspect.addEventListener("click", inspectBriefingMap);
@@ -4763,7 +5118,12 @@
     populateLocationRepairCatalog();
     populateReportRepairCatalog();
     populateMovementRepairCatalog();
-    els.routeRepairToggle.classList.remove("hidden");
+    if (routeRepairEnabled) {
+      els.routeRepairToggle.classList.remove("hidden");
+      if (urlParams.get("dev") === "1") document.body.classList.add("debug-mode");
+    } else {
+      els.routeRepairToggle.classList.add("hidden");
+    }
     drawMapOverlay();
     renderIntro();
     renderBriefing();
